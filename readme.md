@@ -87,9 +87,9 @@
 <dependencies>
   
   <dependency>
-    <groupId>top.kingdon</groupId>
+    <groupId>io.github.goodbey857</groupId>
     <artifactId>luckysheet-xlsx</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>1.0.0</version>
   </dependency>
 
   <dependency>
@@ -131,16 +131,16 @@ public class DemoController {
 
 ```
 第三步 创建luckysheet实例
-```json
-option = {
-  ...  // 其他配置
+```js
+var option = {
+  ...,  // 其他配置,
   plugins: [{ 
     name: 'exportXlsx', 
     config: { 
-      url: 'http://localhost:8080/luckyToXlsx' //url配置为自己本地的导出地址
+      url: "http://localhost:8080/luckyToXlsx" //url配置为自己本地的导出地址
     }
   }]
-}
+};
 
 luckysheet.create(options);
 ```
