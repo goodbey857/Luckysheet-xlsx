@@ -1,5 +1,7 @@
 package top.kingdon.converter.cell;
 
+import lombok.extern.slf4j.Slf4j;
+import org.apache.poi.ss.formula.FormulaParseException;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.util.StringUtil;
 import org.apache.poi.xssf.usermodel.*;
@@ -8,6 +10,8 @@ import top.kingdon.parser.celldata.*;
 import top.kingdon.utils.Util;
 
 import java.util.Objects;
+import java.util.TimeZone;
+
 public class CellConverter {
 
     private final Workbook workbook;
@@ -27,6 +31,8 @@ public class CellConverter {
         Cell cell = fillValue(luckyCellData);
         // 填样式
         fillStyle(cell, luckyCell);
+//        DataFormatter dataFormatter = new DataFormatter();
+//        dataFormatter.formatCellValue(cell);
     }
 
     /**
@@ -35,6 +41,8 @@ public class CellConverter {
      * @param luckyCell
      */
     private void fillStyle(Cell cell, LuckySheetCellDataValue luckyCell) {
+
+
 
         LuckySheetCellFormat cellFormat = luckyCell.getCt();
         String backgroundColor = luckyCell.getBg();
@@ -86,6 +94,7 @@ public class CellConverter {
 
         DataFormat dataFormat = workbook.createDataFormat();
         cellStyle.setDataFormat(dataFormat.getFormat(cellFormat.getFa()));
+
         LuckyInlineString[] inlineStrings = cellFormat.getS();
 //        处理inlineStyle
         if(type.equalsIgnoreCase("inlineStr") && Objects.nonNull(inlineStrings)){
@@ -287,7 +296,8 @@ public class CellConverter {
         if(StringUtil.isNotBlank(value)){
             switch(cellType){
                 case "b": cell.setCellValue(Boolean.parseBoolean(value)); break;
-                case "d": cell.setCellValue(Util.parseDateFrom1900(Double.parseDouble(value),false));break;
+                case "d":
+                    cell.setCellValue(DateUtil.getJavaDate(Double.parseDouble(value),TimeZone.getTimeZone("GMT+8")));break;
                 case "n": cell.setCellValue(Double.parseDouble(value));break;
                 case "inlineStr": break;
                 case "str":
@@ -295,10 +305,14 @@ public class CellConverter {
                 case "e":
                 default: cell.setCellValue(value);
             }
-            cell.setCellValue(value);
         }else if(StringUtil.isNotBlank(formula)){
             // poi设置公式前面不要加等号‘=’
-            cell.setCellFormula(formula.substring(1));
+            try{
+                cell.setCellFormula(formula.substring(1));
+            }catch (FormulaParseException e){
+                System.out.printf("公式解析错误: %s%n", formula);
+
+            }
         }
 
         return cell;

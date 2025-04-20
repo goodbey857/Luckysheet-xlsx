@@ -10,10 +10,10 @@ public class LuckySheetPivotTable {
     private LuckySheetPivotTableField[] column; // Column area, include field
     private LuckySheetPivotTableField[] row; // Row area, include field
     private LuckySheetPivotTableField[] filter; // Filter area, include field
-    private LuckySheetPivotTableFilterParam filterparm; // Save param after apply filter
+    private LuckySheetPivotTableFilterParam filterparam; // Save param after apply filter
     private LuckySheetPivotTableField[] values;
     private String showType;
-    private Object[][] pivotDatas;
+    private String[][] pivotDatas;
     private boolean drawPivotTable;
     private int[] pivotTableBoundary;
 }

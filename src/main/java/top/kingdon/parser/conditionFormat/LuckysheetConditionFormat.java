@@ -11,4 +11,18 @@ public class LuckysheetConditionFormat {
     private String conditionName; // Detailed settings, comparison parameters
     private LuckySheetSelection[] conditionRange; // Detailed settings, comparison range
     private Object[] conditionValue;
+
+    @Data
+    public static class LuckysheetCFDefaultFormat {
+        private String textColor;
+        private String cellColor;
+    }
+
+    @Data
+    public static class LuckysheetCFIconsFormat {
+        private Integer len;
+        private Integer leftMin;
+        private Integer top;
+
+    }
 }

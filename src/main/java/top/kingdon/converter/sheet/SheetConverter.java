@@ -1,14 +1,16 @@
 package top.kingdon.converter.sheet;
 
+import com.alibaba.fastjson2.JSONArray;
+import com.alibaba.fastjson2.JSONObject;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddress;
+import org.apache.poi.ss.util.CellReference;
 import org.apache.poi.util.Units;
-import org.apache.poi.xssf.usermodel.XSSFCellStyle;
-import org.apache.poi.xssf.usermodel.XSSFClientAnchor;
-import org.apache.poi.xssf.usermodel.XSSFColor;
+import org.apache.poi.xssf.usermodel.*;
 import top.kingdon.converter.cell.CellConverter;
 import top.kingdon.parser.celldata.LuckySheetCellData;
 import top.kingdon.parser.celldata.LuckySheetCellRange;
+import top.kingdon.parser.conditionFormat.LuckysheetConditionFormat;
 import top.kingdon.parser.config.LuckySheetConfig;
 import top.kingdon.parser.config.borderInfo.LuckySheetBorderInfoCellForImp;
 import top.kingdon.parser.config.borderInfo.LuckySheetBorderInfoCellValue;
@@ -16,16 +18,20 @@ import top.kingdon.parser.config.borderInfo.LuckySheetBorderInfoCellValueStyle;
 import top.kingdon.parser.config.merge.LuckySheetConfigMerge;
 import top.kingdon.parser.image.LuckyImages;
 import top.kingdon.parser.sheet.LuckySheet;
+import top.kingdon.parser.sheet.LuckySheetSelection;
+import top.kingdon.parser.sheet.LuckysheetFrozen;
 import top.kingdon.utils.Util;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 import static top.kingdon.utils.Util.decodeBase64;
 
 public class SheetConverter {
     private Workbook workbook;
+
+    public SheetConverter(){
+        this.workbook = new XSSFWorkbook();
+    };
     public SheetConverter(Workbook workbook){
         this.workbook = workbook;
     }
@@ -74,8 +80,349 @@ public class SheetConverter {
         setRowHidden(sheet, rowhidden);
         setColumnHidden(sheet, colhidden);
 
+        // 冻结行、冻结列
+        setFreeze(sheet, luckySheet.getFrozen());
+
+        // 填充条件格式
+        fillConditionalFormatting(sheet, luckySheet.getLuckysheet_conditionformat_save());
+
         // 填充图片
         fillImages(sheet, luckySheet.getImages(),luckySheet.getConfig(),luckySheet.getDefaultColWidth(),luckySheet.getDefaultRowHeight());
+
+    }
+
+    public Workbook getWorkbook() {
+        return workbook;
+    }
+
+    /**
+     * default
+     * "dataBar": 数据条
+     * "icons": 图标集
+     * "colorGradation": 色阶
+     * @param sheet
+     * @param luckysheetConditionformatSave
+     */
+    private void fillConditionalFormatting(Sheet sheet, LuckysheetConditionFormat[] luckysheetConditionformatSave) {
+        if(Objects.isNull(luckysheetConditionformatSave) || luckysheetConditionformatSave.length == 0){
+            return;
+        }
+        for (LuckysheetConditionFormat luckysheetConditionformat : luckysheetConditionformatSave) {
+            switch (luckysheetConditionformat.getType()){
+                case "dataBar": fillDataBarConditionalFormatting(sheet, luckysheetConditionformat);break;
+                case "icons": fillIconsConditionalFormatting(sheet,luckysheetConditionformat);break;
+                case "colorGradation": fillColorGradationConditionalFormatting(sheet,luckysheetConditionformat); break;
+                case "default": fillDefaultConditionalFormatting(sheet,luckysheetConditionformat); break;
+                default:break;
+            }
+        }
+
+    }
+
+    private void fillIconsConditionalFormatting(Sheet sheet, LuckysheetConditionFormat luckysheetConditionformat) {
+        LuckySheetSelection[] cellRange = luckysheetConditionformat.getCellrange();
+
+        LuckysheetConditionFormat.LuckysheetCFIconsFormat iconsFormat =
+                ((JSONObject) luckysheetConditionformat.getFormat()).
+                        toJavaObject(LuckysheetConditionFormat.LuckysheetCFIconsFormat.class);
+        CellRangeAddress[] cellRangeAddresses = getCellRangeAddresses(cellRange);
+        SheetConditionalFormatting sheetSF = sheet.getSheetConditionalFormatting();
+        IconMultiStateFormatting.IconSet iconSet = formatIconSet(iconsFormat);
+        if(Objects.isNull(iconSet)){
+            return;
+        }
+        ConditionalFormattingRule rule = sheetSF.createConditionalFormattingRule(iconSet);
+
+        sheetSF.addConditionalFormatting(cellRangeAddresses,rule);
+
+
+
+    }
+
+    private IconMultiStateFormatting.IconSet formatIconSet(LuckysheetConditionFormat.LuckysheetCFIconsFormat iconsFormat){
+        String code = String.format("%d_%d_%d",iconsFormat.getLen(),iconsFormat.getLeftMin(),iconsFormat.getTop());
+        switch(code){
+            case "3_0_0": return IconMultiStateFormatting.IconSet.GYR_3_ARROW;
+            case "3_5_0": return IconMultiStateFormatting.IconSet.GREY_3_ARROWS;
+            case "3_0_1": return IconMultiStateFormatting.IconSet.GYR_3_ARROW;
+            case "4_5_1": return IconMultiStateFormatting.IconSet.GREY_4_ARROWS;
+            case "4_0_2": return IconMultiStateFormatting.IconSet.GYR_4_ARROWS;
+            case "5_5_2": return IconMultiStateFormatting.IconSet.GREY_5_ARROWS;
+            case "5_0_3": return IconMultiStateFormatting.IconSet.GYYYR_5_ARROWS;
+            case "3_0_4": return IconMultiStateFormatting.IconSet.GYR_3_TRAFFIC_LIGHTS;
+            case "3_5_4": return IconMultiStateFormatting.IconSet.GYR_3_TRAFFIC_LIGHTS_BOX;
+            case "3_0_5": return IconMultiStateFormatting.IconSet.GYR_3_SHAPES;
+            case "4_5_5": return IconMultiStateFormatting.IconSet.GYRB_4_TRAFFIC_LIGHTS;
+            case "4_0_6": return IconMultiStateFormatting.IconSet.RB_4_TRAFFIC_LIGHTS;
+            case "3_0_7": return IconMultiStateFormatting.IconSet.GYR_3_SYMBOLS_CIRCLE;
+            case "3_5_7": return IconMultiStateFormatting.IconSet.GYR_3_SYMBOLS;
+            case "3_0_8": return IconMultiStateFormatting.IconSet.GYR_3_FLAGS;
+            case "3_0_9": return null;
+            case "4_5_9": return IconMultiStateFormatting.IconSet.RATINGS_4;
+            case "5_0_10": return IconMultiStateFormatting.IconSet.QUARTERS_5;
+            case "5_5_10": return IconMultiStateFormatting.IconSet.RATINGS_5;
+            case "5_0_11": return IconMultiStateFormatting.IconSet.QUARTERS_5;
+            default: return null;
+        }
+    }
+
+    private void fillDataBarConditionalFormatting(Sheet sheet, LuckysheetConditionFormat luckysheetConditionformat) {
+        LuckySheetSelection[] cellRange = luckysheetConditionformat.getCellrange();
+        String[] format = ((JSONArray) luckysheetConditionformat.getFormat()).toArray(String.class);
+        SheetConditionalFormatting sheetCF = sheet.getSheetConditionalFormatting();
+        ConditionalFormattingRule rule = sheetCF.createConditionalFormattingRule(
+                new XSSFColor(Util.toRGBBytes(format[0])));
+        XSSFDataBarFormatting dataBar = (XSSFDataBarFormatting) rule.getDataBarFormatting();
+
+        dataBar.setColor(new XSSFColor(Util.toRGBBytes("#00ff00")));
+
+        CellRangeAddress[] regions = getCellRangeAddresses(cellRange);
+
+        sheetCF.addConditionalFormatting(regions, rule);
+    }
+
+    private static CellRangeAddress[] getCellRangeAddresses(LuckySheetSelection[] cellRange) {
+        CellRangeAddress[] regions = new CellRangeAddress[cellRange.length];
+        for (int i = 0; i < cellRange.length; i++) {
+            int startRow = cellRange[i].getRow()[0];
+            int endRow = cellRange[i].getRow()[1];
+            int startCol = cellRange[i].getColumn()[0];
+            int endCol = cellRange[i].getColumn()[1];
+            regions[i] = new CellRangeAddress(startRow, endRow, startCol, endCol);
+        }
+        return regions;
+    }
+
+
+    private void fillColorGradationConditionalFormatting(Sheet sheet, LuckysheetConditionFormat luckysheetConditionformat) {
+       LuckySheetSelection[] cellRange = luckysheetConditionformat.getCellrange();
+       String[] format = ((JSONArray) luckysheetConditionformat.getFormat()).toArray(String.class);
+       CellRangeAddress[] regions = Arrays.stream(cellRange)
+               .map(range -> new CellRangeAddress(range.getRow()[0], range.getRow()[1], range.getColumn()[0], range.getColumn()[1]))
+               .toArray(CellRangeAddress[]::new);
+
+
+       SheetConditionalFormatting sheetCF = sheet.getSheetConditionalFormatting();
+       ConditionalFormattingRule rule = sheetCF.createConditionalFormattingColorScaleRule();
+       // 获取颜色标度格式化对象
+       ColorScaleFormatting colorScale = rule.getColorScaleFormatting();
+       // 设置色阶的颜色
+       XSSFColor[] colors = new XSSFColor[format.length];
+       for (int i = 0; i < format.length; i++) {
+           colors[i] = new XSSFColor(Util.toRGBBytes(format[i]));
+       }
+       colorScale.setColors(colors);
+       // 设置三色阶的阈值
+       ConditionalFormattingThreshold[] thresholds = new ConditionalFormattingThreshold[format.length];
+       if(format.length == 2){
+           // 最小值
+           thresholds[0] = colorScale.createThreshold();
+           thresholds[0].setRangeType(ConditionalFormattingThreshold.RangeType.PERCENT);
+           thresholds[0].setValue(0.0);
+           // 最大值
+           thresholds[1] = colorScale.createThreshold();
+           thresholds[1].setRangeType(ConditionalFormattingThreshold.RangeType.PERCENT);
+           thresholds[1].setValue(100.0);
+       } else if (format.length == 3) {
+           // 最小值
+           thresholds[0] = colorScale.createThreshold();
+           thresholds[0].setRangeType(ConditionalFormattingThreshold.RangeType.PERCENT);
+           thresholds[0].setValue(0.0);
+           // 中间值
+           thresholds[1] = colorScale.createThreshold();
+           thresholds[1].setRangeType(ConditionalFormattingThreshold.RangeType.PERCENT);
+           thresholds[1].setValue(50.0);
+           // 最大值
+           thresholds[2] = colorScale.createThreshold();
+           thresholds[2].setRangeType(ConditionalFormattingThreshold.RangeType.PERCENT);
+           thresholds[2].setValue(100.0);
+       }
+
+       colorScale.setThresholds(thresholds);
+       // 应用条件格式
+       sheetCF.addConditionalFormatting(regions, rule);
+
+
+   }
+
+
+
+    /**
+     * conditionName的取值如下
+     * greaterThan
+     * lessThan
+     * betweenness
+     * equal
+     * textContains
+     * occurrenceDate
+     * duplicateValue
+     *
+     * top10%
+     * top10
+     * bottom10%
+     * bottom10
+     * SubAverage
+     * AboveAverage
+     * formula
+     * @param sheet
+     * @param luckysheetConditionformat
+     */
+    private void fillDefaultConditionalFormatting(Sheet sheet, LuckysheetConditionFormat luckysheetConditionformat) {
+
+
+
+        // 获取条件格式管理器
+        SheetConditionalFormatting sheetCF = sheet.getSheetConditionalFormatting();
+
+        // 应用范围
+        LuckySheetSelection[] cellRanges = luckysheetConditionformat.getCellrange();
+        CellRangeAddress[] regions = Arrays.stream(cellRanges)
+                .map(range -> new CellRangeAddress(range.getRow()[0], range.getRow()[1], range.getColumn()[0], range.getColumn()[1]))
+                .toArray(CellRangeAddress[]::new);
+
+        // 获取第一个范围的起始和结束列
+        LuckySheetSelection firstRange = cellRanges[0];
+        String startColumn = CellReference.convertNumToColString(firstRange.getColumn()[0]);
+        String endColumn = CellReference.convertNumToColString(firstRange.getColumn()[1]);
+        int startRow = firstRange.getRow()[0] + 1;
+        int endRow = firstRange.getRow()[1] + 1;
+        String rangeFormula = String.format("%s%d:%s%d", startColumn, startRow, endColumn, endRow);
+        Object[] conditionValue = luckysheetConditionformat.getConditionValue();
+
+        // 创建条件格式规则
+        String conditionName = luckysheetConditionformat.getConditionName();
+        ConditionalFormattingRule rule = null;
+
+        switch (conditionName) {
+            case "greaterThan":
+                rule = sheetCF.createConditionalFormattingRule(
+                        ComparisonOperator.GT,
+                        String.valueOf(conditionValue[0]));
+                break;
+            case "lessThan":
+                rule = sheetCF.createConditionalFormattingRule(
+                        ComparisonOperator.LT,
+                        String.valueOf(conditionValue[0]));
+                break;
+            case "betweenness":
+                rule = sheetCF.createConditionalFormattingRule(
+                        ComparisonOperator.BETWEEN,
+                        String.valueOf(conditionValue[0]),
+                        String.valueOf(conditionValue[1])
+                );
+                break;
+            case "equal":
+                rule = sheetCF.createConditionalFormattingRule(
+                        ComparisonOperator.EQUAL,
+                        String.valueOf(conditionValue[0]));
+                break;
+            case "textContains":
+                rule = sheetCF.createConditionalFormattingRule(
+                        String.format("SEARCH(\"%s\",%s)>0", conditionValue[0], rangeFormula));
+                break;
+            case "occurrenceDate":
+                rule = sheetCF.createConditionalFormattingRule(
+                        ComparisonOperator.BETWEEN, String.valueOf(conditionValue[0]));
+                break;
+            case "duplicateValue":
+                if("1".equals(conditionValue[0])){
+                    rule = sheetCF.createConditionalFormattingRule(
+                            String.format("COUNTIF(%s,%s%d)=1", rangeFormula, startColumn,startRow));
+                }else{
+                    rule = sheetCF.createConditionalFormattingRule(
+                            String.format("COUNTIF(%s,%s%d)>1", rangeFormula, startColumn,startRow));
+                }
+
+                break;
+
+            case "top10":
+                rule = sheetCF.createConditionalFormattingRule(
+                        String.format("RANK(%s1,%s)<=10", startColumn, rangeFormula));
+                break;
+            case "top10%":
+                rule = sheetCF.createConditionalFormattingRule(
+                        String.format("RANK(%s1,%s)/COUNTA(%s)<=0.1", startColumn, rangeFormula, rangeFormula));
+                break;
+            case "bottom10":
+                rule = sheetCF.createConditionalFormattingRule(
+                        String.format("RANK(%s1,%s)>=COUNTA(%s)-9", startColumn, rangeFormula, rangeFormula));
+                break;
+            case "bottom10%":
+                rule = sheetCF.createConditionalFormattingRule(
+                        String.format("RANK(%s1,%s)/COUNTA(%s)>=0.9", startColumn, rangeFormula, rangeFormula));
+                break;
+            case "SubAverage":
+//                rule = sheetCF.createConditionalFormattingRule(String.format("%s1<AVERAGE(%s)", startColumn, rangeFormula));
+                rule = sheetCF.createConditionalFormattingRule(
+                        ComparisonOperator.LT,String.format("AVERAGE(%s)", rangeFormula));
+                break;
+            case "AboveAverage":
+//                rule = sheetCF.createConditionalFormattingRule(String.format("%s1>AVERAGE(%s)", startColumn, rangeFormula));
+                rule = sheetCF.createConditionalFormattingRule(
+                        ComparisonOperator.GT,String.format("AVERAGE(%s)", rangeFormula));
+                break;
+            case "formula":
+                rule = sheetCF.createConditionalFormattingRule(
+                        conditionValue[0].toString());
+                break;
+            default:
+                break;
+        }
+
+        // 设置格式
+        if (rule != null) {
+            FontFormatting fontFormatting = rule.createFontFormatting();
+            JSONObject luckysheetCFDefaultFormat =
+                    (JSONObject) luckysheetConditionformat.getFormat();
+
+            if (luckysheetCFDefaultFormat.getString("textColor") != null) {
+                byte[] rgbBytes = Util.toRGBBytes(luckysheetCFDefaultFormat.getString("textColor"));
+                XSSFColor textColor = new XSSFColor(rgbBytes);
+//                XSSFColor textColor =
+//                        getColorFromHex(luckysheetConditionformat.getFormat().getTextColor());
+                fontFormatting.setFontColor(textColor);
+            }
+
+            PatternFormatting patternFormatting = rule.createPatternFormatting();
+            if (luckysheetCFDefaultFormat.getString("cellColor") != null) {
+                byte[] rgbBytes = Util.toRGBBytes(luckysheetCFDefaultFormat.getString("cellColor"));
+                XSSFColor cellColor =new XSSFColor(rgbBytes);
+                patternFormatting.setFillBackgroundColor(cellColor);
+            }
+
+            // 添加条件格式规则到工作表
+            sheetCF.addConditionalFormatting(regions, rule);
+        }
+    }
+
+
+    /**
+     * "row": 冻结首行
+     * "column": 冻结首列
+     * "both": 冻结行列
+     * "rangeRow": 冻结行到选区
+     * "rangeColumn": 冻结列到选区
+     * "rangeBoth": 冻结行列到选区
+     * "cancel": 取消冻结
+     * @param sheet
+     * @param frozen
+     */
+    private void setFreeze(Sheet sheet, LuckysheetFrozen frozen) {
+        if(Objects.isNull(frozen)){
+            return;
+        }
+        switch (frozen.getType()){
+            case "row": sheet.createFreezePane(0,1);break;
+            case "column": sheet.createFreezePane(1,0);break;
+            case "both": sheet.createFreezePane(1,1);break;
+            case "rangeRow": sheet.createFreezePane(0,frozen.getRange().getRow_focus()); break;
+            case "rangeColumn": sheet.createFreezePane(frozen.getRange().getColumn_focus(),0); break;
+            case "rangeBoth": sheet.createFreezePane(frozen.getRange().getColumn_focus(),frozen.getRange().getRow_focus()); break;
+            case "cancel":
+            default:break;
+
+        }
+
 
 
     }

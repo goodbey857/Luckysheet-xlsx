@@ -1,5 +1,6 @@
 package top.kingdon.parser.sheet;
 
+import com.alibaba.fastjson.annotation.JSONField;
 import lombok.Data;
 import top.kingdon.parser.calcchain.LuckysheetCalcChain;
 import top.kingdon.parser.celldata.LuckySheetCellData;
@@ -32,10 +33,10 @@ public class LuckySheet {
     private Integer defaultRowHeight;
     private LuckySheetCellData[] celldata;
     private LuckySheetChart[] chart;
-    private boolean isPivotTable;
     private LuckySheetPivotTable pivotTable;
+    private boolean isPivotTable;
     private LuckysheetConditionFormat[] luckysheet_conditionformat_save;
-    private LuckysheetFrozen freezen;
+    private LuckysheetFrozen frozen;
     private LuckysheetCalcChain[] calcChain;
     private Map<String,LuckyImages> images;
     private LuckysheetDataVerification dataVerification;

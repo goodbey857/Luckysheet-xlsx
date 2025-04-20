@@ -2,43 +2,12 @@ package top.kingdon.utils;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Base64;
-import java.util.Calendar;
-import java.util.Date;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class Util {
 
-
-    public static Date parseDateFrom1900(double serial, boolean date1904) {
-        // 定义基准时间（1899年12月31日 00:00:00 UTC）
-        Calendar dnthreshUtc = Calendar.getInstance();
-        dnthreshUtc.set(1899, Calendar.DECEMBER, 31, 0, 0, 0);
-        dnthreshUtc.set(Calendar.MILLISECOND, 0);
-        long dnthreshUtcMillis = dnthreshUtc.getTimeInMillis();
-
-        // 计算序列号对应的毫秒数
-        long epoch = (long) (serial * 24 * 60 * 60 * 1000) + dnthreshUtcMillis;
-
-        // 如果使用1904年日期系统，调整时间
-        if (date1904) {
-            epoch += 1461L * 24 * 60 * 60 * 1000;
-        } else {
-            // 定义1900年3月1日
-            Calendar base1904 = Calendar.getInstance();
-            base1904.set(1900, Calendar.MARCH, 1, 0, 0, 0);
-            base1904.set(Calendar.MILLISECOND, 0);
-
-            // 如果日期大于或等于1900年3月1日，调整时间
-            if (new Date(epoch).after(base1904.getTime())) {
-                epoch -= 24L * 60 * 60 * 1000;
-            }
-        }
-
-        // 返回对应的日期对象
-        return new Date(epoch);
-    }
 
     public static  byte[] toRGBBytes(String fontColor) {
         Pattern pattern = Pattern.compile("rgb\\((\\d+),\\s*(\\d+),\\s*(\\d+)\\)");
@@ -106,6 +75,28 @@ public class Util {
             return null;
         }
         return base64Data;
+    }
+
+    public static List<String> splitJsonArray(String jsonArray) {
+        if (jsonArray == null || jsonArray.isEmpty()) {
+            return null;
+        }
+        ArrayList<String> result = new ArrayList<>();
+        Deque<Integer> deque = new ArrayDeque<>();
+        for( int i = 0; i < jsonArray.length(); i++) {
+            char c = jsonArray.charAt(i);
+            if (c == '{') {
+                deque.push(i);
+            } else if (c == '}') {
+                Integer startIndex = deque.pop();
+                if (deque.isEmpty()) {
+                    String json = jsonArray.substring(startIndex, i + 1);
+                    result.add(json);
+                }
+            }
+
+        }
+        return result;
     }
 
 }
